@@ -55,5 +55,3 @@ VITE_MESSAGINGSENDERID=your-messaging-sender-id
 VITE_APPID=your-app-id
 
 Important: Make sure the .env file is added to .gitignore to avoid committing your secrets.
-
-# Server code link: https://github.com/devalienbrain/bootcamp-book-shop-server-user-management-part
