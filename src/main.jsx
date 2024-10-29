@@ -1,25 +1,22 @@
-import { StrictMode } from 'react'
+import React, { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { RouterProvider } from "react-router-dom";
-
+import App from './App.jsx'
 import './index.css'
-import routes from './routes/Routes';
-import AuthProvider from './provider/AuthProvider';
-import { Toaster } from 'react-hot-toast';
-import { HelmetProvider } from 'react-helmet-async';
+import './assets/css/custom.css'
+import {
+  createBrowserRouter,
+  RouterProvider,
+} from "react-router-dom";
+
+import router from './routers';
+
+import AuthProvider from './Provider/AuthProvider'
 
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
-
-    <HelmetProvider>
-      <AuthProvider>
-        <RouterProvider router={routes}></RouterProvider>
-        <Toaster></Toaster>
-      </AuthProvider>
-    </HelmetProvider>
-
-    {/* <RouterProvider router={routes} /> */}
-    {/* <App /> */}
-  </StrictMode>,
+  <React.StrictMode>
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  </React.StrictMode>
 )

@@ -1,60 +1,31 @@
-
 import { createContext, useEffect, useState } from "react";
 import {
-    getAuth,
     createUserWithEmailAndPassword,
-    onAuthStateChanged,
     signInWithEmailAndPassword,
     updateProfile,
+    getAuth,
+    onAuthStateChanged,
+    GoogleAuthProvider,
+    GithubAuthProvider,
+    signInWithPopup,
     signOut,
-    signInWithPopup
 } from "firebase/auth";
-import app from "../firebase/firebase.init";
+import app from "../assets/firebase/firebase.config";
+
 
 export const AuthContext = createContext(null);
 
-const auth = getAuth(app);
-
 const AuthProvider = ({ children }) => {
-
-    const [user, setUser] = useState([]);
+    const googleProvider = new GoogleAuthProvider();
+    const githubProvider = new GithubAuthProvider();
+    const [user, setUser] = useState(null);
+    const [registrationInProgress, setRegistrationInProgress] = useState(false); // New flag
+    const auth = getAuth(app);
     const [loading, setLoading] = useState(true);
 
-    const createUser = async (email, password, name, photo) => {
+    const createUser = (email, password) => {
         setLoading(true);
-
-        try {
-            const userCredintial = await createUserWithEmailAndPassword(auth, email, password);
-            console.log(userCredintial.user);
-            const newUser = userCredintial.user;
-
-            const response = await fetch("http://localhost:5000/userList",
-                {
-                    method: "POST",
-                    headers: {
-                        "content-type": "application/json",
-                    },
-                    body: JSON.stringify(
-                        {
-                            email: newUser.email,
-                            displayName: name,
-                            photoUrl: photo,
-                            userId: newUser.uid,
-                            isAdmin: false,
-                        }
-                    )
-                }
-
-            )
-            console.log(response);
-
-            return userCredintial
-
-        } catch (error) {
-            console.error(error);
-        }
-
-
+        return createUserWithEmailAndPassword(auth, email, password);
     };
 
 
@@ -63,14 +34,13 @@ const AuthProvider = ({ children }) => {
         return signInWithEmailAndPassword(auth, email, password);
     };
 
-    const googleSignIn = (provider) => {
-        setLoading(true);
-        return signInWithPopup(auth, provider);
+    const dBSignIn = (currentUser) => {
+        return setUser(currentUser);
     };
 
-    const githubSignIn = (provider) => {
+    const githubSignIn = () => {
         setLoading(true);
-        return signInWithPopup(auth, provider);
+        return signInWithPopup(auth, githubProvider);
     };
 
     const updateUserProfile = (profile) => {
@@ -78,55 +48,67 @@ const AuthProvider = ({ children }) => {
         return updateProfile(auth.currentUser, profile);
     };
 
-    const logOut = () => {
-        setLoading(true);
+    const loginWithGoogle = () => {
+        return signInWithPopup(auth, googleProvider);
+    };
+
+    const logOutUser = () => {
         return signOut(auth);
     };
 
     useEffect(() => {
-        const unSubscribe = onAuthStateChanged(auth, async (currentUser) => {
-            // If a user exists/ logged in
-            console.log(currentUser);
-            if (currentUser) {
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            if (currentUser && !registrationInProgress) {
                 try {
-                    const response = await fetch(`http://localhost:5000/userList/${currentUser.uid}`);
+                    const response = await fetch(`${import.meta.env.VITE_BASE_URL}/api/user/${currentUser.uid}`);
 
                     if (!response.ok) {
-                        throw new error("Failed to fetch");
+                        throw new Error("Failed to fetch");
                     }
-
                     const data = await response.json();
-                    setUser(data);
+                    if (data) {
+                        setUser(data)
+                        setLoading(false);
+                    }
                 } catch (error) {
-
+                    console.error("Error fetching user data:", error);
+                    setUser(null);
+                    setLoading(false);
+                } finally {
+                    setLoading(false);
+                    setRegistrationInProgress(false);
                 }
             } else {
                 setUser(null);
+                setLoading(false);
             }
 
-            // setUser(currentUser);
-            setLoading(false);
         });
-
         return () => {
-            unSubscribe();
+            unsubscribe();
         };
-
-    }, []);
+    }, [registrationInProgress]);
 
     const authInfo = {
         user,
+        setUser,
+        setRegistrationInProgress,
         loading,
         createUser,
         signIn,
-        googleSignIn,
+        dBSignIn,
+        loginWithGoogle,
         githubSignIn,
         updateUserProfile,
-        logOut,
+        logOutUser,
     };
-    return (
-        <AuthContext.Provider value={authInfo}>{children}</AuthContext.Provider>
-    )
-};
 
+    return (
+        <>
+            <AuthContext.Provider value={authInfo}>
+                {children}
+            </AuthContext.Provider>
+        </>
+    );
+};
 export default AuthProvider;
